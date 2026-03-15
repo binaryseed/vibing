@@ -13,11 +13,11 @@
     --bg: #0e0e0e;
     --bg2: #141414;
     --bg3: #1a1a1a;
-    --border: #222;
-    --border2: #2a2a2a;
+    --border: #333;
+    --border2: #3a3a3a;
     --text: #e8e0d0;
-    --text2: #888;
-    --text3: #444;
+    --text2: #aaa;
+    --text3: #666;
     --vc: #e8643a;
     --kc: #4a9eff;
     --oc: #a78bfa;
@@ -44,10 +44,12 @@
   header {
     display: flex;
     align-items: baseline;
+    justify-content: center;
     gap: 14px;
     padding: 18px 24px 14px;
     border-bottom: 1px solid var(--border);
     flex-shrink: 0;
+    position: relative;
   }
 
   header h1 {
@@ -59,13 +61,15 @@
   }
 
   header .subtitle {
-    font-size: 10px;
-    color: var(--text3);
+    font-size: 13px;
+    color: var(--text);
+    font-weight: 500;
     letter-spacing: 3px;
   }
 
   #sync-status {
-    margin-left: auto;
+    position: absolute;
+    right: 24px;
     font-size: 10px;
     color: var(--text3);
     letter-spacing: 1px;
@@ -290,8 +294,8 @@
 <body>
 <div id="app">
   <header>
-    <h1>same person?</h1>
     <span class="subtitle">KYLIE × VINCE</span>
+    <h1>same person?</h1>
     <span id="sync-status">···</span>
   </header>
 
@@ -329,7 +333,6 @@
           <span>exact</span>
         </div>
         <div class="overall-score">
-          <span class="overall-pct" id="overallPct">—</span>
           <span class="overall-label" id="overallLabel"></span>
         </div>
       </div>
@@ -340,7 +343,7 @@
 
 <script>
 const BIN_ID = '69b63927aa77b81da9e6a798';
-const API_KEY = '$2a$10$KQydW7NSXIx/hzbwTKwCG.4zVOnVQRCrZ7DZbwH87faAeZMR16/Ui';
+const ACCESS_KEY = '$2a$10$KQydW7NSXIx/hzbwTKwCG.4zVOnVQRCrZ7DZbwH87faAeZMR16/Ui';
 const BIN_URL = `https://api.jsonbin.io/v3/b/${BIN_ID}`;
 
 const VC='#e8643a', KC='#4a9eff', OC='#a78bfa';
@@ -375,6 +378,8 @@ function genPts(mean, sigma, n=100) {
   const m = Math.max(0, Math.min(1, mean));
   return Array.from({length: n}, (_, i) => gauss(i/(n-1), m, sigma));
 }
+
+function esc(s) { return s.replace(/\\/g,'\\\\').replace(/'/g,"\\'"); }
 
 function defaultCurves(type) {
   return type === 'similarity' ? {shared: 0.5} : {Vince: 0.5, Kylie: 0.5};
@@ -412,10 +417,17 @@ function setStatus(msg, cls) {
 async function loadFromBin() {
   setStatus('loading···', 'syncing');
   try {
+    console.log('[jsonbin] loading from', BIN_URL + '/latest');
     const r = await fetch(BIN_URL + '/latest', {
-      headers: {'X-Master-Key': API_KEY}
+      headers: {'X-Access-Key': ACCESS_KEY}
     });
+    console.log('[jsonbin] load response:', r.status, r.statusText);
     const data = await r.json();
+    console.log('[jsonbin] load payload:', data);
+    if (!r.ok) {
+      setStatus(`load ${r.status}`, 'error');
+      return;
+    }
     const saved = data.record;
     if (saved && saved.topics) {
       state.topics = saved.topics;
@@ -424,6 +436,7 @@ async function loadFromBin() {
     setStatus('synced', 'saved');
     setTimeout(() => setStatus(''), 2000);
   } catch(e) {
+    console.error('[jsonbin] load error:', e);
     setStatus('offline', 'error');
   }
 }
@@ -431,17 +444,27 @@ async function loadFromBin() {
 async function saveToBin() {
   setStatus('saving···', 'syncing');
   try {
-    await fetch(BIN_URL, {
+    const payload = {topics: state.topics, curves: state.curves};
+    console.log('[jsonbin] saving to', BIN_URL, payload);
+    const r = await fetch(BIN_URL, {
       method: 'PUT',
       headers: {
         'Content-Type': 'application/json',
-        'X-Master-Key': API_KEY
+        'X-Access-Key': ACCESS_KEY
       },
-      body: JSON.stringify({topics: state.topics, curves: state.curves})
+      body: JSON.stringify(payload)
     });
+    console.log('[jsonbin] save response:', r.status, r.statusText);
+    const data = await r.json();
+    console.log('[jsonbin] save result:', data);
+    if (!r.ok) {
+      setStatus(`save ${r.status}`, 'error');
+      return;
+    }
     setStatus('saved', 'saved');
     setTimeout(() => setStatus(''), 2000);
   } catch(e) {
+    console.error('[jsonbin] save error:', e);
     setStatus('save failed', 'error');
   }
 }
@@ -524,7 +547,7 @@ function renderColumn(type) {
           <span class="slider-label" style="color:var(--text2);">similar?</span>
           <input type="range" min="0" max="100" step="1" value="${val}"
             style="accent-color:${OC};"
-            oninput="onSim('${topic.name}',this.value/100)" />
+            oninput="onSim('${esc(topic.name)}',this.value/100)" />
           <span class="slider-val" id="sc-${key}" style="color:${OC};">${score}%</span>
         </div>`;
     } else {
@@ -535,14 +558,14 @@ function renderColumn(type) {
           <span class="slider-label" style="color:${VC};">Vince</span>
           <input type="range" min="0" max="100" step="1" value="${vval}"
             style="accent-color:${VC};"
-            oninput="onInterest('${topic.name}','Vince',this.value/100)" />
+            oninput="onInterest('${esc(topic.name)}','Vince',this.value/100)" />
           <span class="slider-val" id="vv-${key}">${Math.round((cd.Vince??0.5)*10)}</span>
         </div>
         <div class="slider-row">
           <span class="slider-label" style="color:${KC};">Kylie</span>
           <input type="range" min="0" max="100" step="1" value="${kval}"
             style="accent-color:${KC};"
-            oninput="onInterest('${topic.name}','Kylie',this.value/100)" />
+            oninput="onInterest('${esc(topic.name)}','Kylie',this.value/100)" />
           <span class="slider-val" id="kv-${key}">${Math.round((cd.Kylie??0.5)*10)}</span>
         </div>
         <div class="score-row">
@@ -555,7 +578,7 @@ function renderColumn(type) {
     div.innerHTML = `
       <div class="topic-title-row">
         <span class="topic-name">${topic.name}</span>
-        <button class="remove-btn" onclick="removeTopic('${topic.name}')">×</button>
+        <button class="remove-btn" onclick="removeTopic('${esc(topic.name)}')">×</button>
       </div>
       <canvas class="mini" id="mini-${key}" height="40"></canvas>
       ${sliderHTML}
@@ -626,7 +649,8 @@ function getSumData() {
   const sumY = new Array(n).fill(0);
   state.topics.forEach(topic => {
     const s = topicScore(topic);
-    xs.forEach((x, i) => { sumY[i] += gauss(x, s, SUM_SIGMA); });
+    const w = 1 + 1.5 * (1 - Math.abs(s - 0.5) * 2);
+    xs.forEach((x, i) => { sumY[i] += w * gauss(x, s, SUM_SIGMA); });
   });
   return {xs, sumY};
 }
@@ -683,10 +707,7 @@ function updateChart() {
 function updateOverallScore() {
   if (state.topics.length === 0) return;
   const avg = state.topics.reduce((a,t) => a + topicScore(t), 0) / state.topics.length;
-  const pct = Math.round(avg * 100);
-  const pctEl = document.getElementById('overallPct');
   const lblEl = document.getElementById('overallLabel');
-  if (pctEl) pctEl.textContent = pct + '%';
   if (lblEl) lblEl.textContent = scoreLabel(avg);
 }
 
