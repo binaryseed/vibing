@@ -657,13 +657,6 @@ function initChart() {
   if (!canvas || !window.Chart) return;
   const {xs, sumY} = getSumData();
 
-  const ctx = canvas.getContext('2d');
-  const w = canvas.offsetWidth || 500;
-  const grad = ctx.createLinearGradient(0, 0, w, 0);
-  grad.addColorStop(0,   VC + '99');
-  grad.addColorStop(0.5, OC + '99');
-  grad.addColorStop(1,   KC + '99');
-
   sumChart = new Chart(canvas, {
     type: 'line',
     data: {
@@ -671,7 +664,7 @@ function initChart() {
       datasets: [{
         data: sumY,
         borderColor: OC,
-        backgroundColor: grad,
+        backgroundColor: 'transparent',
         fill: true,
         borderWidth: 2,
         pointRadius: 0,
@@ -683,7 +676,17 @@ function initChart() {
       maintainAspectRatio: false,
       plugins: {legend:{display:false}, tooltip:{enabled:false}},
       scales: {x:{display:false}, y:{display:false, min:0}}
-    }
+    },
+    plugins: [{
+      afterLayout(chart) {
+        const {left, right} = chart.chartArea;
+        const grad = chart.ctx.createLinearGradient(left, 0, right, 0);
+        grad.addColorStop(0,   VC + '99');
+        grad.addColorStop(0.5, OC + '99');
+        grad.addColorStop(1,   KC + '99');
+        chart.data.datasets[0].backgroundColor = grad;
+      }
+    }]
   });
 }
 
