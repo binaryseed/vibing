@@ -348,7 +348,7 @@ const ACCESS_KEY = '$2a$10$KQydW7NSXIx/hzbwTKwCG.4zVOnVQRCrZ7DZbwH87faAeZMR16/Ui
 const BIN_URL = `https://api.jsonbin.io/v3/b/${BIN_ID}`;
 
 const VC='#e8643a', KC='#4a9eff', OC='#a78bfa';
-const SIGMA=0.22, SUM_SIGMA=0.06;
+const SIGMA=0.22, SUM_SIGMA=0.06, SIM_SUM_SIGMA=0.15;
 
 let state = {
   topics: [
@@ -642,7 +642,8 @@ function getSumData() {
   state.topics.forEach(topic => {
     const s = topicScore(topic);
     const w = 1 + 1.5 * (1 - Math.abs(s - 0.5) * 2);
-    xs.forEach((x, i) => { sumY[i] += w * gauss(x, s, SUM_SIGMA); });
+    const sigma = topic.type === 'similarity' ? SIM_SUM_SIGMA : SUM_SIGMA;
+    xs.forEach((x, i) => { sumY[i] += w * gauss(x, s, sigma); });
   });
   return {xs, sumY};
 }
