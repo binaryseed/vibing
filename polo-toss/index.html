@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Bike Polo: Big Toss vs Small Toss</title>
+<style>
+  :root{
+    --bg:#0f1419; --panel:#1a2129; --panel2:#222c36; --ink:#e8edf2; --muted:#8a97a6;
+    --small:#4fc3f7; --big:#ffb74d; --line:#2c3742; --accent:#7e57c2; --grid:#202a33;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font:14px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:var(--ink)}
+  header{padding:22px 28px 6px}
+  h1{font-size:20px;margin:0 0 4px}
+  .sub{color:var(--muted);font-size:13px;max-width:780px}
+  .wrap{display:grid;grid-template-columns:320px 1fr;gap:18px;padding:14px 28px 48px}
+  @media(max-width:920px){.wrap{grid-template-columns:1fr}}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:16px 18px;margin-bottom:16px}
+  .card h2{font-size:13px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin:0 0 12px}
+  .ctrl{margin-bottom:14px}
+  .ctrl label{display:flex;justify-content:space-between;font-size:13px;margin-bottom:5px}
+  .ctrl label b{color:var(--small);font-variant-numeric:tabular-nums}
+  input[type=range]{width:100%;accent-color:var(--accent)}
+  .big-slider label b{color:var(--ink);font-size:16px}
+  .hint{color:var(--muted);font-size:11.5px;margin-top:3px}
+  .derived{font-size:12px;color:var(--muted);margin:-2px 0 4px}
+  .derived b{color:var(--ink)}
+  button{background:var(--accent);color:#fff;border:0;border-radius:8px;padding:10px 16px;font-size:14px;font-weight:600;cursor:pointer;width:100%}
+  button:hover{filter:brightness(1.1)}
+  button.alt{background:var(--panel2);border:1px solid var(--line);font-weight:600}
+  .seg{display:flex;gap:6px;margin-bottom:6px}
+  .seg button{flex:1;width:auto;background:var(--panel2);border:1px solid var(--line);color:var(--muted);padding:8px 0}
+  .seg button.on{background:var(--accent);color:#fff;border-color:var(--accent)}
+  .legend{display:flex;gap:18px;font-size:13px;margin:0 0 10px;align-items:center}
+  .legend .ln{display:inline-block;width:18px;height:0;border-top:3px solid;margin-right:6px;vertical-align:4px}
+  canvas{width:100%;display:block}
+  .chart-title{font-size:15px;font-weight:600;margin:0 0 2px}
+  .chart-sub{font-size:12px;color:var(--muted);margin:0 0 10px;max-width:720px}
+  table{width:100%;border-collapse:collapse;font-size:13px;margin-top:4px}
+  th,td{text-align:right;padding:8px 8px;border-bottom:1px solid var(--line);font-variant-numeric:tabular-nums}
+  th:first-child,td:first-child{text-align:left}
+  thead th{color:var(--muted);font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:.05em}
+  td.s{color:var(--small);font-weight:600} td.b{color:var(--big);font-weight:600}
+  .tag{display:inline-block;padding:1px 7px;border-radius:5px;font-size:11px;font-weight:600}
+  .tag.s{background:rgba(79,195,247,.18);color:var(--small)}
+  .tag.b{background:rgba(255,183,77,.18);color:var(--big)}
+  .tag.tie{background:rgba(138,151,166,.16);color:var(--muted)}
+  .ties{color:var(--muted);font-size:12px;margin-top:10px;padding-top:10px;border-top:1px solid var(--line)}
+  .chart-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+  @media(max-width:760px){.chart-grid{grid-template-columns:1fr}}
+  .card.chart{margin-bottom:0}
+  .stats{display:flex;gap:22px;flex-wrap:wrap}
+  .stat{flex:1;min-width:150px}
+  .stat .num{font-size:24px;font-weight:700;color:var(--ink);font-variant-numeric:tabular-nums}
+  .stat .num.warn{color:#ff8a80}
+  .stat .lbl{font-size:12px;color:var(--muted);margin-top:2px}
+</style>
+</head>
+<body>
+<header>
+  <h1>Bike Polo Pickup: Big Toss vs Small Toss</h1>
+  <div class="sub">Both methods give everyone the same number of games <em>on average</em> — the difference is entirely in the shape of the distribution and the long waits. These charts show that shape. Each run simulates many random nights.</div>
+</header>
+
+<div class="wrap">
+  <!-- CONTROLS -->
+  <div>
+    <div class="card">
+      <h2>Crowd</h2>
+      <div class="ctrl big-slider"><label>Players <b><span id="vStart"></span></b></label>
+        <input type="range" id="start" min="7" max="30" step="1" value="14">
+        <div class="hint">The whole tradeoff pivots on this. The two methods are near-identical when this is a multiple of 6.</div></div>
+    </div>
+
+    <div class="card">
+      <h2>Session</h2>
+      <div class="ctrl"><label>Session length <b><span id="vSession"></span> h</b></label>
+        <input type="range" id="session" min="1" max="4" step="0.5" value="3"></div>
+      <div class="ctrl"><label>Game length <b><span id="vGame"></span> min</b></label>
+        <input type="range" id="game" min="8" max="20" step="1" value="15"></div>
+      <div class="ctrl"><label>Between-game futzing <b><span id="vChange"></span> min</b></label>
+        <input type="range" id="change" min="1" max="10" step="1" value="3"></div>
+      <div class="derived">≈ <b><span id="dGames"></span></b> games/night · each game-block = <b><span id="dBlock"></span> min</b></div>
+    </div>
+
+    <div class="card">
+      <h2>Simulation</h2>
+      <div class="ctrl"><label>Nights to simulate</label>
+        <div class="seg" id="nightsSeg">
+          <button data-n="1">1</button>
+          <button data-n="5">5</button>
+          <button data-n="10">10</button>
+          <button data-n="100" class="on">100</button>
+        </div>
+        <div class="hint">1 night = raw single-night luck; 100 = the smooth underlying shape. Re-runs live as you adjust anything.</div></div>
+    </div>
+  </div>
+
+  <!-- RESULTS -->
+  <div>
+    <div class="card">
+      <h2>The futzing tax (same for both methods)</h2>
+      <div id="futzBody"></div>
+    </div>
+
+    <div class="chart-grid">
+      <div class="card chart">
+        <p class="chart-title">How many games each person gets</p>
+        <p class="chart-sub" id="gamesSub"></p>
+        <div class="legend"><span><span class="ln" style="border-color:var(--small)"></span>Small</span><span><span class="ln" style="border-color:var(--big)"></span>Big</span></div>
+        <canvas id="gamesChart" height="210"></canvas>
+      </div>
+
+      <div class="card chart">
+        <p class="chart-title">How long you wait between games</p>
+        <p class="chart-sub" id="waitSub"></p>
+        <div class="legend"><span><span class="ln" style="border-color:var(--small)"></span>Small</span><span><span class="ln" style="border-color:var(--big)"></span>Big</span></div>
+        <canvas id="waitChart" height="210"></canvas>
+      </div>
+
+      <div class="card chart">
+        <p class="chart-title">One night, player by player</p>
+        <p class="chart-sub">Each dot is a player at their game count for one simulated night; a stack = several players on the same count.</p>
+        <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
+          <div class="legend"><span><span class="ln" style="border-color:var(--small)"></span>Small</span><span><span class="ln" style="border-color:var(--big)"></span>Big</span></div>
+          <button id="newNight" class="alt" style="width:auto;padding:6px 12px">🎲 New night</button>
+        </div>
+        <canvas id="stripChart" height="210"></canvas>
+      </div>
+
+      <div class="card chart">
+        <p class="chart-title">Different people you played with</p>
+        <p class="chart-sub" id="mateSub"></p>
+        <div class="legend"><span><span class="ln" style="border-color:var(--small)"></span>Small</span><span><span class="ln" style="border-color:var(--big)"></span>Big</span></div>
+        <canvas id="mateChart" height="210"></canvas>
+      </div>
+    </div>
+
+    <div class="card" style="margin-top:16px">
+      <h2>The differences that matter</h2>
+      <div id="summary"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+"use strict";
+// ---------- RNG / sim (validated engine) ----------
+function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;};}
+function shuffle(arr,rng){for(let i=arr.length-1;i>0;i--){const j=(rng()*(i+1))|0;const t=arr[i];arr[i]=arr[j];arr[j]=t;}return arr;}
+function buildRoster(cfg){
+  const players=[];
+  for(let i=0;i<cfg.startPlayers;i++)players.push({id:i,arrive:0,depart:Infinity});
+  return players;
+}
+function simulate(method,players,G,rng){
+  for(const p of players){p.played=[];p.mates=new Set();}
+  const BUF=G+12,committed=Array.from({length:BUF},()=>[]);
+  const isHere=(p,g)=>p.arrive<=g&&g<p.depart;
+  for(let g=0;g<G;g++){
+    const here=players.filter(p=>isHere(p,g));if(here.length<6)continue;
+    let carried=committed[g].filter(p=>isHere(p,g));committed[g]=carried;
+    if(carried.length<6){
+      const cset=new Set();for(let k=g;k<BUF;k++)for(const p of committed[k])cset.add(p.id);
+      let free=shuffle(here.filter(p=>!cset.has(p.id)),rng);
+      if(method==='small'){let k=g;while(free.length&&k<BUF){while(committed[k].length<6&&free.length)committed[k].push(free.shift());k++;}}
+      else{if(carried.length===0){let k=g;while(free.length&&k<BUF){while(committed[k].length<6&&free.length)committed[k].push(free.shift());k++;}}
+        else{while(committed[g].length<6&&free.length)committed[g].push(free.shift());}}
+    }
+    const lineup=committed[g].filter(p=>isHere(p,g)).slice(0,6);if(lineup.length<6)continue;
+    for(const p of lineup)p.played.push(g);
+    for(const a of lineup)for(const b of lineup)if(a!==b)a.mates.add(b.id);
+  }
+  return players;
+}
+
+// ---------- config ----------
+function readCfg(){
+  const v=id=>+document.getElementById(id).value;
+  const sessionMin=v('session')*60,gameLen=v('game'),changeover=v('change'),block=gameLen+changeover;
+  return {sessionMin,gameLen,changeover,block,numGames:Math.max(1,Math.floor(sessionMin/block)),
+    startPlayers:v('start'),nights:SELECTED_NIGHTS,seed:(Math.random()*1e6|0)+1};
+}
+
+// ---------- run + collect distributions ----------
+function run(cfg){
+  const G=cfg.numGames,block=cfg.block;
+  const acc={small:{games:[],wait:[],distinct:[]},big:{games:[],wait:[],distinct:[]}};
+  for(let n=0;n<cfg.nights;n++){
+    const base=cfg.seed*100003+n*7919;
+    const roster=buildRoster(cfg);
+    for(const m of ['small','big']){
+      const ps=roster.map(p=>({id:p.id,arrive:p.arrive,depart:p.depart}));
+      simulate(m,ps,G,mulberry32(base+(m==='small'?13:29)));
+      const A=acc[m];
+      for(const p of ps){
+        const lo=p.arrive,hi=Math.min(p.depart,G);if(hi<=lo)continue;
+        A.games.push(p.played.length);
+        A.distinct.push(p.mates.size);
+        const ev=p.played;
+        if(ev.length===0){A.wait.push(hi-lo);continue;}
+        A.wait.push(ev[0]-lo);
+        for(let i=1;i<ev.length;i++)A.wait.push(ev[i]-ev[i-1]-1);
+      }
+    }
+  }
+  return acc;
+}
+
+// ---------- stats helpers ----------
+const mean=a=>a.length?a.reduce((s,x)=>s+x,0)/a.length:0;
+function pct(a,q){if(!a.length)return 0;const b=a.slice().sort((x,y)=>x-y);return b[Math.min(b.length-1,Math.floor(q*b.length))];}
+function distrib(arr,maxX){const h=new Array(maxX+1).fill(0);for(const x of arr)if(x>=0&&x<=maxX)h[x]++;const s=arr.length||1;return h.map(c=>c/s);}
+
+// ---------- canvas ----------
+function setupCanvas(c){const r=window.devicePixelRatio||1;if(!c.dataset.h)c.dataset.h=c.getAttribute('height')||c.clientHeight||150;const w=Math.max(1,c.clientWidth),h=+c.dataset.h;c.style.height=h+'px';c.width=w*r;c.height=h*r;const x=c.getContext('2d');x.setTransform(r,0,0,r,0,0);return{x,w,h};}
+// generic frequency-polygon line chart
+function drawDist(canvas,xs,series,opt){
+  const {x,w,h}=setupCanvas(canvas);x.clearRect(0,0,w,h);
+  const pad={l:54,r:16,t:18,b:44};
+  const pw=w-pad.l-pad.r,ph=h-pad.t-pad.b;
+  const xmin=xs[0],xmax=xs[xs.length-1];
+  let ymax=0;for(const s of series)for(const v of s.data)if(v>ymax)ymax=v;ymax=ymax*1.18||1;
+  const X=v=>pad.l+((v-xmin)/((xmax-xmin)||1))*pw,Y=v=>pad.t+ph-(v/ymax)*ph;
+  const yfmt=opt.yfmt||(v=>v<2?v.toFixed(1):v.toFixed(0));
+  // gridlines + y labels
+  x.font='11px sans-serif';
+  for(let i=0;i<=4;i++){const yv=ymax*i/4,py=Y(yv);x.strokeStyle='#202a33';x.beginPath();x.moveTo(pad.l,py);x.lineTo(pad.l+pw,py);x.stroke();
+    x.fillStyle='#8a97a6';x.textAlign='right';x.fillText(yfmt(yv),pad.l-6,py+3);}
+  // axes
+  x.strokeStyle='#2c3742';x.beginPath();x.moveTo(pad.l,pad.t);x.lineTo(pad.l,pad.t+ph);x.lineTo(pad.l+pw,pad.t+ph);x.stroke();
+  // x labels
+  x.fillStyle='#8a97a6';x.textAlign='center';
+  const step=Math.ceil(xs.length/14);
+  for(let i=0;i<xs.length;i+=step)x.fillText(xs[i],X(xs[i]),h-24);
+  x.fillText(opt.xlabel||'',pad.l+pw/2,h-7);
+  // y axis caption
+  if(opt.ylabel){x.save();x.translate(13,pad.t+ph/2);x.rotate(-Math.PI/2);x.fillStyle='#8a97a6';x.textAlign='center';x.fillText(opt.ylabel,0,0);x.restore();}
+  // fair-share marker
+  if(opt.mark!==undefined&&opt.mark>=xmin&&opt.mark<=xmax){const mx=X(opt.mark);x.strokeStyle='#5b6b7a';x.setLineDash([4,3]);x.beginPath();x.moveTo(mx,pad.t);x.lineTo(mx,pad.t+ph);x.stroke();x.setLineDash([]);x.fillStyle='#8a97a6';x.textAlign='center';x.fillText(opt.markLabel||'',mx,pad.t-6);}
+  // lines + markers
+  for(const s of series){
+    x.strokeStyle=s.color;x.lineWidth=2.4;x.beginPath();
+    xs.forEach((xv,i)=>{const px=X(xv),py=Y(s.data[i]);i?x.lineTo(px,py):x.moveTo(px,py);});x.stroke();
+    x.fillStyle=s.color;xs.forEach((xv,i)=>{x.beginPath();x.arc(X(xv),Y(s.data[i]),3,0,7);x.fill();});
+  }
+  // value labels (small toss above its point, big below — avoids overlap)
+  if(opt.labels){x.font='10px sans-serif';x.textAlign='center';
+    series.forEach((s,si)=>{x.fillStyle=s.color;xs.forEach((xv,i)=>{const v=s.data[i];if(v<(opt.labelMin||0.005))return;
+      x.fillText(opt.lfmt?opt.lfmt(v):(v<1?v.toFixed(2):v.toFixed(1)),X(xv),Y(v)+(si===0?-8:14));});});}
+}
+
+// ---------- single-night dot strip ----------
+function oneNight(method,cfg,seed){const ps=buildRoster(cfg);simulate(method,ps,cfg.numGames,mulberry32(seed));return ps.map(p=>p.played.length);}
+function drawDotStrip(canvas,cfg,seed){
+  const {x,w,h}=setupCanvas(canvas);x.clearRect(0,0,w,h);
+  const G=cfg.numGames, AX=Math.floor(cfg.sessionMin/cfg.gameLen), fair=6*G/cfg.startPlayers;
+  const small=oneNight('small',cfg,seed*100003+13), big=oneNight('big',cfg,seed*100003+29);
+  const pad={l:62,r:16,t:18,b:30}, pw=w-pad.l-pad.r, plotTop=pad.t, plotBot=h-pad.b, mid=(plotTop+plotBot)/2;
+  const X=v=>pad.l+(v/(AX||1))*pw;
+  // fair-share line
+  const fx=X(fair);x.strokeStyle='#5b6b7a';x.setLineDash([4,3]);x.beginPath();x.moveTo(fx,plotTop);x.lineTo(fx,plotBot);x.stroke();x.setLineDash([]);
+  x.fillStyle='#8a97a6';x.font='11px sans-serif';x.textAlign='center';x.fillText('fair share '+fair.toFixed(1),fx,plotTop-6);
+  const group=d=>{const by={};d.forEach(c=>by[c]=(by[c]||0)+1);return by;};
+  const gs=group(small), gb=group(big);
+  const maxStack=Math.max(1,...Object.values(gs),...Object.values(gb));
+  const step=Math.min(15,((mid-plotTop)-8)/maxStack), r=Math.max(3,Math.min(6,step/2-1));
+  const bands=[{by:gs,color:'#4fc3f7',label:'Small',base:mid-12},{by:gb,color:'#ffb74d',label:'Big',base:plotBot-6}];
+  for(const bd of bands){
+    x.strokeStyle='#2c3742';x.beginPath();x.moveTo(pad.l,bd.base+r+3);x.lineTo(pad.l+pw,bd.base+r+3);x.stroke();
+    x.fillStyle=bd.color;x.textAlign='right';x.font='600 13px sans-serif';x.fillText(bd.label,pad.l-12,bd.base+4);
+    for(const cStr in bd.by){const c=+cStr,k=bd.by[cStr],px=X(c);
+      for(let i=0;i<k;i++){const py=bd.base-i*step;x.globalAlpha=.85;x.fillStyle=bd.color;x.beginPath();x.arc(px,py,r,0,7);x.fill();x.globalAlpha=1;}}
+  }
+  x.fillStyle='#8a97a6';x.textAlign='center';x.font='11px sans-serif';
+  const xstep=Math.ceil((AX+1)/14);
+  for(let i=0;i<=AX;i+=xstep)x.fillText(i,X(i),h-12);
+  x.fillText('games played this night',pad.l+pw/2,h-1);
+}
+
+// ---------- render ----------
+function render(){
+  const cfg=readCfg();
+  const acc=run(cfg);
+  const G=cfg.numGames, fair=cfg.startPlayers?6*G/cfg.startPlayers:0, NB=cfg.nights;
+  const perNight=(arr,maxX)=>{const hh=new Array(maxX+1).fill(0);for(const v of arr)if(v>=0&&v<=maxX)hh[v]++;return hh.map(c=>c/NB);};
+  // x-axis fixed to games that fit with ZERO futzing — so futzing never moves the axis
+  const AX=Math.floor(cfg.sessionMin/cfg.gameLen);
+  // games-played distribution
+  const xs=[];for(let i=0;i<=AX;i++)xs.push(i);
+  drawDist(document.getElementById('gamesChart'),xs,[
+    {color:'#4fc3f7',data:perNight(acc.small.games,AX)},
+    {color:'#ffb74d',data:perNight(acc.big.games,AX)}
+  ],{xlabel:`games played in the night  (0–${AX})`,ylabel:'players per night',mark:fair,markLabel:'fair share '+fair.toFixed(1),labels:true,labelMin:0.03});
+  document.getElementById('gamesSub').textContent=
+    `On a typical night with ${cfg.startPlayers} players and ${G} games, how many players end up with each game count (the heights add up to your crowd). Fair share ≈ ${fair.toFixed(1)} each.`;
+  // wait distribution — same fixed axis
+  const xw=[];for(let i=0;i<=AX;i++)xw.push(i);
+  drawDist(document.getElementById('waitChart'),xw,[
+    {color:'#4fc3f7',data:perNight(acc.small.wait,AX)},
+    {color:'#ffb74d',data:perNight(acc.big.wait,AX)}
+  ],{xlabel:`games sat out in a row  ( ×${cfg.block} min each )`,ylabel:'waits per night',labels:true,labelMin:0.03});
+  document.getElementById('waitSub').textContent=
+    `How many waits of each length happen on a typical night. Each game sat out ≈ ${cfg.block} min of waiting.`;
+  // matchup: distinct people played with (0..N-1)
+  const Nm=cfg.startPlayers-1;
+  const xm=[];for(let i=0;i<=Nm;i++)xm.push(i);
+  drawDist(document.getElementById('mateChart'),xm,[
+    {color:'#4fc3f7',data:perNight(acc.small.distinct,Nm)},
+    {color:'#ffb74d',data:perNight(acc.big.distinct,Nm)}
+  ],{xlabel:`different people played with (of ${Nm})`,ylabel:'players per night',labels:true,labelMin:0.03});
+  document.getElementById('mateSub').textContent=`Of the other ${Nm} players, how many you shared a court with. The two lines sit almost on top of each other — matchup variety is a tie.`;
+  drawDotStrip(document.getElementById('stripChart'),cfg,STRIP_SEED);
+  renderSummary(acc,cfg,fair);
+  renderFutz(cfg);
+}
+
+function renderFutz(cfg){
+  const N=cfg.startPlayers, G=cfg.numGames;
+  const G0=Math.floor(cfg.sessionMin/cfg.gameLen);   // games if changeover were zero
+  const gamesLost=G0-G;
+  const totalFutz=G*cfg.changeover;                  // minutes actually spent futzing
+  const playing=G*cfg.gameLen;                        // minutes actually playing
+  const tail=cfg.sessionMin-(playing+totalFutz);      // leftover too short for another game
+  const pctNight=totalFutz/cfg.sessionMin*100;
+  const lostPP=gamesLost*6/N*cfg.gameLen;             // per-player court time lost
+  const extraGamesPP=gamesLost*6/N;
+  const stat=(num,warn,lbl)=>`<div class="stat"><div class="num${warn?' warn':''}">${num}</div><div class="lbl">${lbl}</div></div>`;
+  document.getElementById('futzBody').innerHTML=
+    `<div class="stats">`
+   +stat(`${totalFutz} min`, totalFutz>0, `total time lost to futzing — ${pctNight.toFixed(0)}% of the ${cfg.sessionMin}-min night`)
+   +stat(`${lostPP.toFixed(0)} min`, lostPP>0, `less court time per player (~${extraGamesPP.toFixed(1)} fewer games each)`)
+   +stat(`${gamesLost} fewer`, gamesLost>0, `games played — ${G} tonight vs ${G0} with zero futzing`)
+   +`</div>`
+   +`<div class="ties">Where the ${cfg.sessionMin} min goes: <b>${playing}</b> playing · <b>${totalFutz}</b> futzing · <b>${tail}</b> unused tail (leftover too short for another game). Those ${gamesLost} lost games = ${totalFutz} + ${tail} = ${totalFutz+tail} min ÷ ${cfg.gameLen} = ${gamesLost}.</div>`;
+}
+
+function renderSummary(acc,cfg,fair){
+  const hogT=Math.round(fair)+2, shutT=Math.round(fair)-2, NB=cfg.nights;
+  const perN=(arr,test)=>arr.filter(test).length/NB;   // expected players per night
+  const s={
+    hog:perN(acc.small.games,x=>x>=hogT), shut:perN(acc.small.games,x=>x<=shutT),
+    worst:pct(acc.small.wait,0.99)*cfg.block, typ:pct(acc.small.wait,0.5)*cfg.block
+  };
+  const b={
+    hog:perN(acc.big.games,x=>x>=hogT), shut:perN(acc.big.games,x=>x<=shutT),
+    worst:pct(acc.big.wait,0.99)*cfg.block, typ:pct(acc.big.wait,0.5)*cfg.block
+  };
+  // a per-night count -> plain reading
+  const cnt=e=>{const read=e<0.005?'essentially never':e>=1?`≈${e.toFixed(1)} players, every night`:`≈1 player every ${Math.round(1/e)} nights`;
+    return `${e.toFixed(2)}<div class="hint">${read}</div>`;};
+  const mm=v=>`${v.toFixed(0)} min`;
+  const r=(label,sv,bv,fmt,eps,note)=>{
+    let win;
+    if(Math.abs(sv-bv)<=eps) win='<span class="tag tie">tie</span>';
+    else{const w=sv<bv?'s':'b';win=`<span class="tag ${w}">${w==='s'?'small':'big'}</span>`;}
+    return `<tr><td>${label}<div class="hint">${note}</div></td><td class="s">${fmt(sv)}</td><td class="b">${fmt(bv)}</td><td>${win}</td></tr>`;
+  };
+  document.getElementById('summary').innerHTML=
+    `<table><thead><tr><th>What can go wrong (per night)</th><th>Small</th><th>Big</th><th>Better</th></tr></thead><tbody>`
+    +r(`Someone hogs the night (≥ ${hogT} games)`,s.hog,b.hog,cnt,0.03,'plays well above fair share while others sit')
+    +r(`Someone short-changed (≤ ${shutT} games)`,s.shut,b.shut,cnt,0.03,'plays well below fair share over the night')
+    +r('Worst sit-out (longest 1% of waits)',s.worst,b.worst,mm,0.5,'the "I\'ve been out forever" wait')
+    +r('Typical wait between games',s.typ,b.typ,mm,0.5,'the median gap')
+    +`</tbody></table>`
+    +`<div class="ties">Identical between methods (not shown): average games played, total play time, and matchup variety. The court is the bottleneck — both share it equally on average.</div>`;
+}
+
+// ---------- wiring ----------
+const sliders=[['start','vStart',v=>v],['session','vSession',v=>v],['game','vGame',v=>v],['change','vChange',v=>v]];
+let SELECTED_NIGHTS=100;
+let STRIP_SEED=(Math.random()*1e6|0)+1;
+function syncLabels(){for(const [id,lab,f] of sliders)document.getElementById(lab).textContent=f(document.getElementById(id).value);const cfg=readCfg();document.getElementById('dGames').textContent=cfg.numGames;document.getElementById('dBlock').textContent=cfg.block;}
+let raf;
+function update(){syncLabels();cancelAnimationFrame(raf);raf=requestAnimationFrame(render);}
+for(const [id] of sliders)document.getElementById(id).addEventListener('input',update);
+document.getElementById('nightsSeg').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;SELECTED_NIGHTS=+b.dataset.n;for(const x of e.currentTarget.children)x.classList.toggle('on',x===b);update();});
+document.getElementById('newNight').addEventListener('click',()=>{STRIP_SEED=(Math.random()*1e6|0)+1;drawDotStrip(document.getElementById('stripChart'),readCfg(),STRIP_SEED);});
+window.addEventListener('resize',render);
+syncLabels();render();
+</script>
+</body>
+</html>
